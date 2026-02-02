@@ -19,10 +19,9 @@ import {
 import { CalendarEvent, TimeSlot } from '../types';
 import {
   calculateAvailableSlots,
-  calculateReservationEnd,
 } from '../utils/slots';
 import { createReservation } from '../services/api';
-import { format, addMinutes } from 'date-fns';
+import { format, addMinutes, isBefore, differenceInMinutes } from 'date-fns';
 import { cs } from 'date-fns/locale';
 
 interface ReserveDialogProps {
@@ -73,7 +72,27 @@ export function ReserveDialog({
       // Calculate times RIGHT NOW when user clicks reserve
       const now = new Date();
       const start = now;
-      const end = addMinutes(now, selectedSlot);
+      let end = addMinutes(now, selectedSlot);
+
+      // If there's a next event, make sure we don't overlap with it
+      if (nextEvent) {
+        const nextEventStart = new Date(nextEvent.start);
+
+        // If end would be after or equal to next event start, shorten the reservation
+        if (!isBefore(end, nextEventStart)) {
+          // Calculate how many minutes we actually have
+          const availableMinutes = differenceInMinutes(nextEventStart, now);
+
+          if (availableMinutes < 1) {
+            setError('Není dostatek času pro rezervaci. Další událost začíná.');
+            setLoading(false);
+            return;
+          }
+
+          // Set end to 1 minute before next event (safety margin)
+          end = addMinutes(now, Math.max(1, availableMinutes - 1));
+        }
+      }
 
       const result = await createReservation({
         start: start.toISOString(),

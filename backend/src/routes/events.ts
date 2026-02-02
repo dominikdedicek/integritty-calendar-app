@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { parseISO, isBefore, isAfter, addMinutes } from 'date-fns';
+import { parseISO, isBefore, isAfter, addMinutes, subMinutes } from 'date-fns';
 import { getTodayEvents, checkCollision, createReservation } from '../services/googleCalendar';
 import { config } from '../config';
 
@@ -54,17 +54,24 @@ router.post('/reserve', async (req: Request, res: Response) => {
     }
 
     const { start: startStr, end: endStr, title } = validation.data;
-    const start = parseISO(startStr);
+    let start = parseISO(startStr);
     const end = parseISO(endStr);
     const now = new Date();
 
-    // Validate time constraints
-    if (isBefore(start, now)) {
+    // Allow 1 minute tolerance for network delay
+    // If start is slightly in the past, use current time instead
+    const tolerance = subMinutes(now, 1);
+    if (isBefore(start, tolerance)) {
       res.status(400).json({
         success: false,
         error: 'Čas začátku nemůže být v minulosti',
       });
       return;
+    }
+
+    // If start is in the past but within tolerance, adjust to now
+    if (isBefore(start, now)) {
+      start = now;
     }
 
     if (!isAfter(end, start)) {

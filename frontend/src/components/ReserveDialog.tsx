@@ -19,11 +19,10 @@ import {
 import { CalendarEvent, TimeSlot } from '../types';
 import {
   calculateAvailableSlots,
-  getReservationStartTime,
   calculateReservationEnd,
 } from '../utils/slots';
 import { createReservation } from '../services/api';
-import { format } from 'date-fns';
+import { format, addMinutes } from 'date-fns';
 import { cs } from 'date-fns/locale';
 
 interface ReserveDialogProps {
@@ -49,18 +48,12 @@ export function ReserveDialog({
     return calculateAvailableSlots(new Date(), nextEvent);
   }, [open, nextEvent]);
 
-  // Calculate start and end time for display
-  const reservationTimes = useMemo(() => {
+  // Format end time for display (start is "now", end is now + selected minutes)
+  const getEndTimeDisplay = (): string | null => {
     if (selectedSlot === null) return null;
-    const start = getReservationStartTime(new Date());
-    const end = calculateReservationEnd(start, selectedSlot);
-    return {
-      start,
-      end,
-      startFormatted: format(start, 'HH:mm', { locale: cs }),
-      endFormatted: format(end, 'HH:mm', { locale: cs }),
-    };
-  }, [selectedSlot]);
+    const end = addMinutes(new Date(), selectedSlot);
+    return format(end, 'HH:mm', { locale: cs });
+  };
 
   const handleSlotChange = (
     _event: React.MouseEvent<HTMLElement>,
@@ -71,15 +64,20 @@ export function ReserveDialog({
   };
 
   const handleReserve = async () => {
-    if (selectedSlot === null || !reservationTimes) return;
+    if (selectedSlot === null) return;
 
     setLoading(true);
     setError(null);
 
     try {
+      // Calculate times RIGHT NOW when user clicks reserve
+      const now = new Date();
+      const start = now;
+      const end = addMinutes(now, selectedSlot);
+
       const result = await createReservation({
-        start: reservationTimes.start.toISOString(),
-        end: reservationTimes.end.toISOString(),
+        start: start.toISOString(),
+        end: end.toISOString(),
       });
 
       if (result.success) {
@@ -174,7 +172,7 @@ export function ReserveDialog({
               ))}
             </ToggleButtonGroup>
 
-            {reservationTimes && (
+            {selectedSlot && (
               <Box
                 sx={{
                   mt: 3,
@@ -185,10 +183,7 @@ export function ReserveDialog({
                 }}
               >
                 <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                  Rezervace bude vytvořena:
-                </Typography>
-                <Typography variant="h4" sx={{ mt: 1, fontFamily: 'monospace' }}>
-                  {reservationTimes.startFormatted} - {reservationTimes.endFormatted}
+                  Rezervace na {selectedSlot} minut (do ~{getEndTimeDisplay()})
                 </Typography>
               </Box>
             )}

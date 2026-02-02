@@ -160,6 +160,8 @@ export async function checkCollision(
 ): Promise<CalendarEvent | null> {
   const calendar = getCalendarClient();
 
+  console.log(`Checking collision for: ${start.toISOString()} - ${end.toISOString()}`);
+
   // Fetch events that might overlap with the proposed time
   const response = await calendar.events.list({
     calendarId: config.calendarId,
@@ -174,14 +176,31 @@ export async function checkCollision(
     .map(mapGoogleEventToCalendarEvent)
     .filter((e): e is CalendarEvent => e !== null && e.status !== 'cancelled');
 
-  // Check for any overlapping event
+  console.log(`Found ${events.length} events in range:`, events.map(e => ({
+    title: e.title,
+    start: e.start,
+    end: e.end,
+    isAllDay: e.isAllDay
+  })));
+
+  // Check for any overlapping event (skip all-day events for quick reservations)
   for (const event of events) {
+    // Skip all-day events - they shouldn't block quick reservations
+    if (event.isAllDay) {
+      console.log(`Skipping all-day event: ${event.title}`);
+      continue;
+    }
+
     const eventStart = new Date(event.start);
     const eventEnd = new Date(event.end);
 
     // Check if there's an overlap
     // Overlap exists if: start < eventEnd AND end > eventStart
-    if (isBefore(start, eventEnd) && isAfter(end, eventStart)) {
+    const hasOverlap = isBefore(start, eventEnd) && isAfter(end, eventStart);
+
+    console.log(`Checking event "${event.title}": ${eventStart.toISOString()} - ${eventEnd.toISOString()}, overlap: ${hasOverlap}`);
+
+    if (hasOverlap) {
       return event;
     }
   }

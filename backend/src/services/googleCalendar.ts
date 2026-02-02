@@ -8,7 +8,6 @@ import {
   isBefore,
   isAfter,
 } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { config } from '../config';
 import { CalendarEvent, RoomStatus, EventsResponse } from '../types';
 
@@ -56,11 +55,11 @@ function mapGoogleEventToCalendarEvent(
 
   if (isAllDay) {
     // All-day events: start/end are in YYYY-MM-DD format
-    // Convert to full day in the configured timezone
+    // Convert to ISO string at start of day
     const startDate = parseISO(event.start!.date!);
     const endDate = parseISO(event.end!.date!);
-    start = fromZonedTime(startOfDay(startDate), config.timezone).toISOString();
-    end = fromZonedTime(startOfDay(endDate), config.timezone).toISOString();
+    start = startOfDay(startDate).toISOString();
+    end = startOfDay(endDate).toISOString();
   } else {
     start = event.start!.dateTime!;
     end = event.end!.dateTime!;
@@ -128,11 +127,10 @@ function calculateRoomStatus(
 export async function getTodayEvents(): Promise<EventsResponse> {
   const calendar = getCalendarClient();
   const now = new Date();
-  const zonedNow = toZonedTime(now, config.timezone);
 
-  // Get start and end of day in the configured timezone
-  const dayStart = fromZonedTime(startOfDay(zonedNow), config.timezone);
-  const dayEnd = fromZonedTime(endOfDay(zonedNow), config.timezone);
+  // Get start and end of day - Google Calendar API handles timezone via timeZone param
+  const dayStart = startOfDay(now);
+  const dayEnd = endOfDay(now);
 
   const response = await calendar.events.list({
     calendarId: config.calendarId,

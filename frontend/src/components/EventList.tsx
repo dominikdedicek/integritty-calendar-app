@@ -155,24 +155,36 @@ export function EventList({ events, loading }: EventListProps) {
     );
   }
 
+  // Filter out past events (keep only current and future)
   // Sort events by start time
-  const sortedEvents = [...events].sort(
-    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
-  );
+  const activeEvents = [...events]
+    .filter((event) => !isEventPast(event.end, now) || isEventCurrent(event.start, event.end, now))
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+  if (activeEvents.length === 0) {
+    return (
+      <Paper elevation={0} sx={{ p: 3, backgroundColor: 'background.paper' }}>
+        <Typography variant="h3" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EventIcon /> Dnešní události
+        </Typography>
+        <EmptyState />
+      </Paper>
+    );
+  }
 
   return (
     <Paper elevation={0} sx={{ p: 3, backgroundColor: 'background.paper' }}>
       <Typography variant="h3" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <EventIcon /> Dnešní události ({events.length})
+        <EventIcon /> Nadcházející události ({activeEvents.length})
       </Typography>
       <Divider sx={{ mb: 2 }} />
       <List sx={{ p: 0 }}>
-        {sortedEvents.map((event) => (
+        {activeEvents.map((event) => (
           <EventItem
             key={event.id}
             event={event}
             isCurrent={isEventCurrent(event.start, event.end, now)}
-            isPast={isEventPast(event.end, now)}
+            isPast={false}
           />
         ))}
       </List>

@@ -13,23 +13,25 @@ export const STANDARD_SLOTS = [15, 30, 45, 60];
 export const MIN_SLOT_MINUTES = 5;
 
 /**
- * Round time up to the nearest 5 minutes
+ * Get reservation start time - starts immediately (rounded to nearest minute for cleaner display)
  *
- * Reasoning for 5-minute rounding:
- * - More practical for real-world meetings (people think in 5-10 minute increments)
- * - Prevents very short "leftover" slots (e.g., 2 minutes)
- * - Calendar entries look cleaner (10:15 vs 10:17)
- * - Standard practice in most calendar/booking systems
- *
- * @param date Date to round
- * @returns Date rounded up to next 5 minutes
+ * @param date Current time
+ * @returns Date rounded to nearest minute
+ */
+export function getReservationStartTime(date: Date): Date {
+  const result = new Date(date);
+  result.setSeconds(0, 0);
+  return result;
+}
+
+/**
+ * Round time up to the nearest 5 minutes (kept for backward compatibility)
  */
 export function roundUpToNearestFiveMinutes(date: Date): Date {
   const minutes = date.getMinutes();
   const remainder = minutes % 5;
 
   if (remainder === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0) {
-    // Already exactly on a 5-minute boundary
     return new Date(date);
   }
 
@@ -44,9 +46,9 @@ export function roundUpToNearestFiveMinutes(date: Date): Date {
  * Calculate available time slots for quick reservation
  *
  * Rules:
- * 1. Slots start from current time rounded up to 5 minutes
+ * 1. Slots start from current time (immediately)
  * 2. Standard slots: 15, 30, 45, 60 minutes
- * 3. If a standard slot would overlap with the next event, it's marked as unavailable
+ * 3. If a standard slot would overlap with the next event, it's not offered
  * 4. If available time is less than the shortest standard slot (15 min) but >= 5 min,
  *    offer a custom slot for the available time
  * 5. If available time is < 5 minutes, no slots are offered
@@ -59,7 +61,7 @@ export function calculateAvailableSlots(
   now: Date,
   nextEvent: CalendarEvent | null
 ): TimeSlot[] {
-  const roundedStart = roundUpToNearestFiveMinutes(now);
+  const startTime = getReservationStartTime(now);
 
   // If no next event, all standard slots are available
   if (!nextEvent) {
@@ -73,12 +75,12 @@ export function calculateAvailableSlots(
   const nextEventStart = new Date(nextEvent.start);
 
   // If next event already started (shouldn't happen, but safety check)
-  if (isBefore(nextEventStart, roundedStart)) {
+  if (isBefore(nextEventStart, startTime)) {
     return [];
   }
 
   // Calculate available time until next event
-  const availableMinutes = differenceInMinutes(nextEventStart, roundedStart);
+  const availableMinutes = differenceInMinutes(nextEventStart, startTime);
 
   // If less than minimum slot duration, no slots available
   if (availableMinutes < MIN_SLOT_MINUTES) {
@@ -160,9 +162,9 @@ export function canMakeReservation(
 
   if (nextEvent) {
     const now = new Date();
-    const roundedStart = roundUpToNearestFiveMinutes(now);
+    const startTime = getReservationStartTime(now);
     const nextEventStart = new Date(nextEvent.start);
-    const availableMinutes = differenceInMinutes(nextEventStart, roundedStart);
+    const availableMinutes = differenceInMinutes(nextEventStart, startTime);
 
     if (availableMinutes < MIN_SLOT_MINUTES) {
       return {

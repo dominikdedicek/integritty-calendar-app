@@ -51,15 +51,12 @@ export function StatusHeader({ roomName, status, loading }: StatusHeaderProps) {
       <Paper
         elevation={0}
         sx={{
-          p: 4,
-          textAlign: 'center',
+          p: 3,
           backgroundColor: 'background.paper',
         }}
       >
         <Skeleton variant="text" width="60%" height={60} sx={{ mx: 'auto' }} />
         <Skeleton variant="rounded" width={200} height={60} sx={{ mx: 'auto', my: 2 }} />
-        <Skeleton variant="text" width="40%" height={40} sx={{ mx: 'auto' }} />
-        <Skeleton variant="text" width="30%" height={30} sx={{ mx: 'auto' }} />
       </Paper>
     );
   }
@@ -68,13 +65,33 @@ export function StatusHeader({ roomName, status, loading }: StatusHeaderProps) {
     <Paper
       elevation={0}
       sx={{
-        p: 4,
-        textAlign: 'center',
+        p: 3,
+        position: 'relative',
         backgroundColor: isOccupied ? 'error.dark' : 'success.dark',
         color: 'white',
         transition: 'background-color 0.3s ease',
       }}
     >
+      {/* Date and Time - Top Right */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 16,
+          right: 24,
+          textAlign: 'right',
+        }}
+      >
+        <Typography variant="body2" sx={{ opacity: 0.9, textTransform: 'capitalize' }}>
+          {formatCurrentDate(now)}
+        </Typography>
+        <Typography
+          variant="h4"
+          sx={{ fontFamily: 'monospace', fontWeight: 700 }}
+        >
+          {formatCurrentTime(now)}
+        </Typography>
+      </Box>
+
       {/* Room Name */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
         <RoomIcon sx={{ fontSize: 32 }} />
@@ -84,61 +101,50 @@ export function StatusHeader({ roomName, status, loading }: StatusHeaderProps) {
       </Box>
 
       {/* Status Badge */}
-      <Chip
-        icon={isOccupied ? <OccupiedIcon /> : <AvailableIcon />}
-        label={isOccupied ? 'OBSAZENO' : 'VOLNO'}
-        sx={{
-          fontSize: '2rem',
-          fontWeight: 700,
-          py: 4,
-          px: 3,
-          height: 'auto',
-          '& .MuiChip-label': {
-            px: 2,
-          },
-          '& .MuiChip-icon': {
+      <Box sx={{ textAlign: 'center' }}>
+        <Chip
+          icon={isOccupied ? <OccupiedIcon /> : <AvailableIcon />}
+          label={isOccupied ? 'OBSAZENO' : 'VOLNO'}
+          sx={{
             fontSize: '2rem',
-          },
-          backgroundColor: isOccupied ? 'error.main' : 'success.main',
-          color: 'white',
-        }}
-      />
+            fontWeight: 700,
+            py: 4,
+            px: 3,
+            height: 'auto',
+            '& .MuiChip-label': {
+              px: 2,
+            },
+            '& .MuiChip-icon': {
+              fontSize: '2rem',
+            },
+            backgroundColor: isOccupied ? 'error.main' : 'success.main',
+            color: 'white',
+          }}
+        />
 
-      {/* Countdown */}
-      {countdown && (
-        <Typography variant="h3" sx={{ mt: 3 }}>
-          {isOccupied ? 'Konec za' : 'Další událost za'}{' '}
-          <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
-            {countdown}
-          </Box>
-        </Typography>
-      )}
+        {/* Countdown */}
+        {countdown && (
+          <Typography variant="h4" sx={{ mt: 2 }}>
+            {isOccupied ? 'Konec za' : 'Další událost za'}{' '}
+            <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
+              {countdown}
+            </Box>
+          </Typography>
+        )}
 
-      {/* Current event info */}
-      {status?.isOccupied && status.currentEvent && (
-        <Typography variant="body1" sx={{ mt: 1, opacity: 0.9 }}>
-          {status.currentEvent.title}
-        </Typography>
-      )}
+        {/* Current event info */}
+        {status?.isOccupied && status.currentEvent && (
+          <Typography variant="body1" sx={{ mt: 1, opacity: 0.9 }}>
+            {status.currentEvent.title}
+          </Typography>
+        )}
 
-      {/* Next event info when available */}
-      {!status?.isOccupied && !status?.nextEvent && (
-        <Typography variant="h4" sx={{ mt: 3, opacity: 0.9 }}>
-          Dnes bez dalších událostí
-        </Typography>
-      )}
-
-      {/* Current date and time */}
-      <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-        <Typography variant="h4" sx={{ textTransform: 'capitalize' }}>
-          {formatCurrentDate(now)}
-        </Typography>
-        <Typography
-          variant="h2"
-          sx={{ fontFamily: 'monospace', fontWeight: 700, mt: 1 }}
-        >
-          {formatCurrentTime(now)}
-        </Typography>
+        {/* Next event info when available */}
+        {!status?.isOccupied && !status?.nextEvent && (
+          <Typography variant="body1" sx={{ mt: 2, opacity: 0.9 }}>
+            Dnes bez dalších událostí
+          </Typography>
+        )}
       </Box>
     </Paper>
   );

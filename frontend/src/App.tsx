@@ -58,6 +58,7 @@ function App() {
           flex: 1,
           overflow: 'auto',
           p: 2,
+          minHeight: 0, // Important for flex scroll
         }}
       >
         <Container maxWidth="md" disableGutters>

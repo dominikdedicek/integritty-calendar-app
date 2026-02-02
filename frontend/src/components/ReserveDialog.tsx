@@ -19,7 +19,7 @@ import {
 import { CalendarEvent, TimeSlot } from '../types';
 import {
   calculateAvailableSlots,
-  roundUpToNearestFiveMinutes,
+  getReservationStartTime,
   calculateReservationEnd,
 } from '../utils/slots';
 import { createReservation } from '../services/api';
@@ -52,7 +52,7 @@ export function ReserveDialog({
   // Calculate start and end time for display
   const reservationTimes = useMemo(() => {
     if (selectedSlot === null) return null;
-    const start = roundUpToNearestFiveMinutes(new Date());
+    const start = getReservationStartTime(new Date());
     const end = calculateReservationEnd(start, selectedSlot);
     return {
       start,

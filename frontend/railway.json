@@ -5,6 +5,6 @@
     "buildCommand": "npm install && npm run build"
   },
   "deploy": {
-    "startCommand": "serve /app/dist -s -p ${PORT:-3000}"
+    "startCommand": "npm run start"
   }
 }

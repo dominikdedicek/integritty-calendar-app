@@ -39,26 +39,30 @@ function App() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        height: '100vh',
+        height: '100dvh', // Dynamic viewport height for mobile
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'background.default',
+        overflow: 'hidden',
       }}
     >
-      {/* Status Header */}
-      <StatusHeader
-        roomName={config?.roomName || 'Zasedací místnost'}
-        status={data?.status || null}
-        loading={loading && !data}
-      />
+      {/* Status Header - fixed height */}
+      <Box sx={{ flexShrink: 0 }}>
+        <StatusHeader
+          roomName={config?.roomName || 'Zasedací místnost'}
+          status={data?.status || null}
+          loading={loading && !data}
+        />
+      </Box>
 
-      {/* Main Content - Event List */}
+      {/* Main Content - Event List with scroll */}
       <Box
         sx={{
           flex: 1,
           overflow: 'auto',
           p: 2,
-          minHeight: 0, // Important for flex scroll
+          minHeight: 0,
         }}
       >
         <Container maxWidth="md" disableGutters>
@@ -69,12 +73,14 @@ function App() {
         </Container>
       </Box>
 
-      {/* Footer - Reserve Button */}
-      <ReserveButton
-        status={data?.status || null}
-        onClick={handleReserveClick}
-        disabled={loading && !data}
-      />
+      {/* Footer - Reserve Button - always visible */}
+      <Box sx={{ flexShrink: 0 }}>
+        <ReserveButton
+          status={data?.status || null}
+          onClick={handleReserveClick}
+          disabled={loading && !data}
+        />
+      </Box>
 
       {/* Reserve Dialog */}
       <ReserveDialog

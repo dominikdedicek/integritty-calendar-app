@@ -16,7 +16,7 @@ import {
   Schedule as ScheduleIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { CalendarEvent, TimeSlot } from '../types';
+import { CalendarEvent } from '../types';
 import {
   calculateAvailableSlots,
 } from '../utils/slots';

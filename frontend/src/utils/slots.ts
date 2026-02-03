@@ -1,4 +1,4 @@
-import { addMinutes, differenceInMinutes, isBefore, isAfter } from 'date-fns';
+import { addMinutes, differenceInMinutes, isBefore } from 'date-fns';
 import { TimeSlot, CalendarEvent } from '../types';
 
 /**

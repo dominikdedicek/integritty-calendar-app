@@ -121,9 +121,88 @@ Aplikace běží na:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:3001
 
-## Nasazení (Deployment)
+## Android APK
 
-### Vercel (doporučeno)
+Aplikace podporuje generování Android APK pomocí Capacitor. APK se připojuje k nasazenému backendu.
+
+### Prerekvizity
+
+- [Android Studio](https://developer.android.com/studio) s Android SDK
+- Java JDK 17+
+
+### Konfigurace API URL
+
+Před buildem APK nastavte URL vašeho produkčního backendu:
+
+```bash
+# frontend/.env.production
+VITE_API_URL=https://your-backend.railway.app
+```
+
+### Generování APK
+
+```bash
+cd frontend
+
+# Build webové aplikace
+npm run build
+
+# Sync s Android projektem
+npx cap sync android
+
+# Otevřít v Android Studio
+npx cap open android
+```
+
+V Android Studio:
+1. Build → Build Bundle(s) / APK(s) → Build APK(s)
+2. APK najdete v `android/app/build/outputs/apk/debug/`
+
+### Release APK (podepsané)
+
+Pro produkční APK:
+1. V Android Studio: Build → Generate Signed Bundle / APK
+2. Vytvořte nebo vyberte keystore
+3. Zvolte APK a "release" build variant
+
+### Kiosk mód
+
+Pro nasazení na dedikovaný tablet jako kiosk display:
+1. Nainstalujte APK na tablet
+2. V nastavení Android povolte "Pin app" nebo použijte kiosk launcher (např. Fully Kiosk Browser)
+3. Nastavte automatické spuštění při startu
+
+## Nasazení backendu (Deployment)
+
+### Railway (doporučeno pro backend)
+
+1. Vytvořte nový projekt na [Railway](https://railway.app/)
+2. Připojte GitHub repozitář
+3. Nastavte:
+   - Root Directory: `backend`
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start`
+4. Přidejte environment variables:
+   ```
+   CALENDAR_ID=your-calendar@group.calendar.google.com
+   GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+   ROOM_NAME=Zasedací místnost
+   TIMEZONE=Europe/Prague
+   CORS_ORIGIN=*
+   ```
+5. Railway automaticky přiřadí URL (např. `https://your-app.railway.app`)
+
+### Render
+
+1. Vytvořte nový Web Service na [Render](https://render.com/)
+2. Připojte GitHub repozitář
+3. Nastavte:
+   - Root Directory: `backend`
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start`
+4. Přidejte environment variables (stejné jako Railway)
+
+### Vercel (pouze frontend)
 
 1. **Backend jako API Routes v Next.js**:
    - Převeďte backend na Next.js API routes

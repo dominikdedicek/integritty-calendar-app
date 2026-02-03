@@ -1,11 +1,9 @@
-import React from 'react';
 import {
   Box,
   Typography,
   Paper,
   List,
   ListItem,
-  ListItemText,
   Chip,
   Skeleton,
   Divider,

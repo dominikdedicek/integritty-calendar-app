@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Box, Container, Snackbar, Alert } from '@mui/material';
 import {
   StatusHeader,
@@ -39,8 +39,7 @@ function App() {
   return (
     <Box
       sx={{
-        height: '100vh',
-        height: '100dvh', // Dynamic viewport height for mobile
+        height: '100dvh', // Dynamic viewport height for mobile (fallback to 100vh in older browsers via CSS)
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: 'background.default',

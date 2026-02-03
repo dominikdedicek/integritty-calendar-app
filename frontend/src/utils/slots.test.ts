@@ -188,15 +188,6 @@ describe('formatSlotLabel', () => {
 });
 
 describe('canMakeReservation', () => {
-  const createEvent = (start: string): CalendarEvent => ({
-    id: '1',
-    title: 'Test Event',
-    start,
-    end: '2024-01-15T11:00:00',
-    isAllDay: false,
-    status: 'confirmed',
-  });
-
   it('should return false when room is occupied', () => {
     const result = canMakeReservation(true, null);
 

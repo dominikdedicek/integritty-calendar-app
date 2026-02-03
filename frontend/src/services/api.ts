@@ -5,7 +5,9 @@ import {
   ReserveResponse,
 } from '../types';
 
-const API_BASE = '/api/events';
+// API base URL - uses environment variable for production, relative path for development
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE = `${API_BASE_URL}/api/events`;
 
 class ApiError extends Error {
   constructor(

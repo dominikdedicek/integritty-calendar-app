@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "start": "serve dist -s -l ${PORT:-3000}",
     "build:android": "npm run build && npx cap sync android",
     "preview": "vite preview",
     "test": "vitest run",
@@ -26,7 +27,8 @@
     "@mui/material": "^5.15.11",
     "date-fns": "^3.3.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "serve": "^14.2.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.0.0",

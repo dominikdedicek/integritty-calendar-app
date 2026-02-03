@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "start": "serve dist -s -l 8080",
+    "start": "serve dist -s -p $PORT",
     "build:android": "npm run build && npx cap sync android",
     "preview": "vite preview",
     "test": "vitest run",

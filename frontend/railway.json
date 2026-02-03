@@ -5,8 +5,6 @@
     "buildCommand": "npm install && npm run build"
   },
   "deploy": {
-    "startCommand": "npm run start",
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 100
+    "startCommand": "serve dist -s -p ${PORT:-3000}"
   }
 }

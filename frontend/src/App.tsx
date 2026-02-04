@@ -8,11 +8,17 @@ import {
   ErrorState,
 } from './components';
 import { useCalendarData } from './hooks/useCalendarData';
+import { useMeetingNotifications } from './hooks/useMeetingNotifications';
 
 function App() {
   const { data, config, loading, error, isOffline, refresh } = useCalendarData();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Sound notifications for meeting end times
+  useMeetingNotifications({
+    currentEvent: data?.status.currentEvent || null,
+  });
 
   // Show error state if there's an error and no cached data
   if ((error || isOffline) && !data) {

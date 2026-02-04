@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Box, Container, Snackbar, Alert } from '@mui/material';
+import { Box, Container, Snackbar, Alert, Fab } from '@mui/material';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import {
   StatusHeader,
   EventList,
@@ -16,7 +18,7 @@ function App() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Sound notifications for meeting end times
-  useMeetingNotifications({
+  const { audioEnabled, enableAudio } = useMeetingNotifications({
     currentEvent: data?.status.currentEvent || null,
   });
 
@@ -129,6 +131,21 @@ function App() {
             : 'Chyba při aktualizaci dat'}
         </Alert>
       )}
+
+      {/* Audio enable button */}
+      <Fab
+        color={audioEnabled ? 'success' : 'warning'}
+        onClick={enableAudio}
+        sx={{
+          position: 'fixed',
+          bottom: 100,
+          right: 16,
+          zIndex: 1000,
+        }}
+        aria-label={audioEnabled ? 'Zvuk aktivní' : 'Aktivovat zvuk'}
+      >
+        {audioEnabled ? <VolumeUpIcon /> : <VolumeOffIcon />}
+      </Fab>
     </Box>
   );
 }

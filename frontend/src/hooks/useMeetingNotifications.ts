@@ -1,8 +1,13 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { CalendarEvent } from '../types';
 
 interface UseMeetingNotificationsProps {
   currentEvent: CalendarEvent | null;
+}
+
+interface UseMeetingNotificationsReturn {
+  audioEnabled: boolean;
+  enableAudio: () => Promise<void>;
 }
 
 // Global audio context - reused across calls
@@ -14,47 +19,6 @@ function getAudioContext(): AudioContext {
     globalAudioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
   }
   return globalAudioContext;
-}
-
-// Unlock audio on first user interaction
-function unlockAudio(): void {
-  if (audioUnlocked) return;
-
-  const unlock = async () => {
-    try {
-      const ctx = getAudioContext();
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-      // Play a silent sound to unlock
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = 0;
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.start();
-      oscillator.stop(ctx.currentTime + 0.001);
-      audioUnlocked = true;
-      console.log('Audio unlocked');
-
-      // Remove listeners after unlock
-      document.removeEventListener('click', unlock);
-      document.removeEventListener('touchstart', unlock);
-      document.removeEventListener('keydown', unlock);
-    } catch (e) {
-      console.error('Failed to unlock audio:', e);
-    }
-  };
-
-  document.addEventListener('click', unlock);
-  document.addEventListener('touchstart', unlock);
-  document.addEventListener('keydown', unlock);
-}
-
-// Initialize audio unlock on module load
-if (typeof window !== 'undefined') {
-  console.log('useMeetingNotifications module loaded - setting up audio unlock');
-  unlockAudio();
 }
 
 // Simple bell sound using Web Audio API
@@ -76,6 +40,11 @@ function createBellSound(audioContext: AudioContext): void {
 }
 
 async function playBell(times: number): Promise<void> {
+  if (!audioUnlocked) {
+    console.log('Audio not unlocked yet, skipping bell');
+    return;
+  }
+
   try {
     const audioContext = getAudioContext();
 
@@ -96,7 +65,9 @@ async function playBell(times: number): Promise<void> {
   }
 }
 
-export function useMeetingNotifications({ currentEvent }: UseMeetingNotificationsProps): void {
+export function useMeetingNotifications({ currentEvent }: UseMeetingNotificationsProps): UseMeetingNotificationsReturn {
+  const [audioEnabled, setAudioEnabled] = useState(audioUnlocked);
+
   const notifiedRef = useRef<{
     fiveMin: boolean;
     oneMin: boolean;
@@ -108,6 +79,22 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
     end: false,
     eventId: null,
   });
+
+  const enableAudio = useCallback(async () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      // Play a test sound to confirm it works
+      createBellSound(ctx);
+      audioUnlocked = true;
+      setAudioEnabled(true);
+      console.log('Audio enabled successfully');
+    } catch (e) {
+      console.error('Failed to enable audio:', e);
+    }
+  }, []);
 
   const checkAndNotify = useCallback(() => {
     if (!currentEvent) {
@@ -135,11 +122,6 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
     const endTime = new Date(currentEvent.end).getTime();
     const minutesRemaining = (endTime - now) / 1000 / 60;
 
-    // Debug log every 10 seconds
-    if (Math.floor(now / 1000) % 10 === 0) {
-      console.log(`Meeting check: ${minutesRemaining.toFixed(2)} minutes remaining`);
-    }
-
     // 5 minutes before end - 1 bell
     if (minutesRemaining <= 5 && minutesRemaining > 4 && !notifiedRef.current.fiveMin) {
       notifiedRef.current.fiveMin = true;
@@ -163,8 +145,6 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
   }, [currentEvent]);
 
   useEffect(() => {
-    console.log('useMeetingNotifications: Starting notification checks', currentEvent ? `for event: ${currentEvent.title}` : '(no event)');
-
     // Check immediately
     checkAndNotify();
 
@@ -172,5 +152,7 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
     const interval = setInterval(checkAndNotify, 1000);
 
     return () => clearInterval(interval);
-  }, [checkAndNotify, currentEvent]);
+  }, [checkAndNotify]);
+
+  return { audioEnabled, enableAudio };
 }

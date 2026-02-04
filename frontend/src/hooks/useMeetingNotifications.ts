@@ -5,6 +5,57 @@ interface UseMeetingNotificationsProps {
   currentEvent: CalendarEvent | null;
 }
 
+// Global audio context - reused across calls
+let globalAudioContext: AudioContext | null = null;
+let audioUnlocked = false;
+
+function getAudioContext(): AudioContext {
+  if (!globalAudioContext) {
+    globalAudioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  }
+  return globalAudioContext;
+}
+
+// Unlock audio on first user interaction
+function unlockAudio(): void {
+  if (audioUnlocked) return;
+
+  const unlock = async () => {
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      // Play a silent sound to unlock
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0;
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.001);
+      audioUnlocked = true;
+      console.log('Audio unlocked');
+
+      // Remove listeners after unlock
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('keydown', unlock);
+    } catch (e) {
+      console.error('Failed to unlock audio:', e);
+    }
+  };
+
+  document.addEventListener('click', unlock);
+  document.addEventListener('touchstart', unlock);
+  document.addEventListener('keydown', unlock);
+}
+
+// Initialize audio unlock on module load
+if (typeof window !== 'undefined') {
+  unlockAudio();
+}
+
 // Simple bell sound using Web Audio API
 function createBellSound(audioContext: AudioContext): void {
   const oscillator = audioContext.createOscillator();
@@ -24,13 +75,23 @@ function createBellSound(audioContext: AudioContext): void {
 }
 
 async function playBell(times: number): Promise<void> {
-  const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  try {
+    const audioContext = getAudioContext();
 
-  for (let i = 0; i < times; i++) {
-    createBellSound(audioContext);
-    if (i < times - 1) {
-      await new Promise(resolve => setTimeout(resolve, 600));
+    // Resume if suspended
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
     }
+
+    for (let i = 0; i < times; i++) {
+      createBellSound(audioContext);
+      if (i < times - 1) {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+    }
+    console.log(`Played ${times} bell(s)`);
+  } catch (e) {
+    console.error('Failed to play bell:', e);
   }
 }
 

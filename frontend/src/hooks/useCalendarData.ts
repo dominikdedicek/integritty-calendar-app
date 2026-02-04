@@ -12,7 +12,7 @@ interface UseCalendarDataResult {
   lastUpdated: Date | null;
 }
 
-const DEFAULT_REFRESH_INTERVAL = 30; // seconds
+const DEFAULT_REFRESH_INTERVAL = 5; // seconds
 
 export function useCalendarData(): UseCalendarDataResult {
   const [data, setData] = useState<EventsResponse | null>(null);

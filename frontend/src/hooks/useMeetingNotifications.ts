@@ -53,6 +53,7 @@ function unlockAudio(): void {
 
 // Initialize audio unlock on module load
 if (typeof window !== 'undefined') {
+  console.log('useMeetingNotifications module loaded - setting up audio unlock');
   unlockAudio();
 }
 
@@ -134,6 +135,11 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
     const endTime = new Date(currentEvent.end).getTime();
     const minutesRemaining = (endTime - now) / 1000 / 60;
 
+    // Debug log every 10 seconds
+    if (Math.floor(now / 1000) % 10 === 0) {
+      console.log(`Meeting check: ${minutesRemaining.toFixed(2)} minutes remaining`);
+    }
+
     // 5 minutes before end - 1 bell
     if (minutesRemaining <= 5 && minutesRemaining > 4 && !notifiedRef.current.fiveMin) {
       notifiedRef.current.fiveMin = true;
@@ -157,6 +163,8 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
   }, [currentEvent]);
 
   useEffect(() => {
+    console.log('useMeetingNotifications: Starting notification checks', currentEvent ? `for event: ${currentEvent.title}` : '(no event)');
+
     // Check immediately
     checkAndNotify();
 
@@ -164,5 +172,5 @@ export function useMeetingNotifications({ currentEvent }: UseMeetingNotification
     const interval = setInterval(checkAndNotify, 1000);
 
     return () => clearInterval(interval);
-  }, [checkAndNotify]);
+  }, [checkAndNotify, currentEvent]);
 }

@@ -242,3 +242,38 @@ export async function createReservation(
 
   return createdEvent;
 }
+
+export async function endMeetingEarly(eventId: string): Promise<CalendarEvent> {
+  const calendar = getCalendarClient();
+
+  // First, get the current event
+  const currentEvent = await calendar.events.get({
+    calendarId: config.calendarId,
+    eventId: eventId,
+  });
+
+  if (!currentEvent.data) {
+    throw new Error('Event not found');
+  }
+
+  const now = new Date();
+
+  // Update the end time to now
+  const response = await calendar.events.patch({
+    calendarId: config.calendarId,
+    eventId: eventId,
+    requestBody: {
+      end: {
+        dateTime: now.toISOString(),
+        timeZone: config.timezone,
+      },
+    },
+  });
+
+  const updatedEvent = mapGoogleEventToCalendarEvent(response.data);
+  if (!updatedEvent) {
+    throw new Error('Failed to update event');
+  }
+
+  return updatedEvent;
+}

@@ -3,3 +3,4 @@ export { EventList } from './EventList';
 export { ReserveDialog } from './ReserveDialog';
 export { ReserveButton } from './ReserveButton';
 export { ErrorState } from './ErrorState';
+export { EndMeetingDialog } from './EndMeetingDialog';

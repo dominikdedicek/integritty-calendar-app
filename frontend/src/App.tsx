@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Box, Container, Snackbar, Alert, Fab } from '@mui/material';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import StopIcon from '@mui/icons-material/Stop';
 import {
   StatusHeader,
   EventList,
   ReserveDialog,
   ReserveButton,
   ErrorState,
+  EndMeetingDialog,
 } from './components';
 import { useCalendarData } from './hooks/useCalendarData';
 import { useMeetingNotifications } from './hooks/useMeetingNotifications';
@@ -15,12 +17,15 @@ import { useMeetingNotifications } from './hooks/useMeetingNotifications';
 function App() {
   const { data, config, loading, error, isOffline, refresh } = useCalendarData();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [endMeetingDialogOpen, setEndMeetingDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Sound notifications for meeting end times
   const { audioEnabled, enableAudio } = useMeetingNotifications({
     currentEvent: data?.status.currentEvent || null,
   });
+
+  const isOccupied = data?.status.isOccupied ?? false;
 
   // Show error state if there's an error and no cached data
   if ((error || isOffline) && !data) {
@@ -37,6 +42,19 @@ function App() {
 
   const handleReservationSuccess = () => {
     setSuccessMessage('Rezervace byla úspěšně vytvořena');
+    refresh();
+  };
+
+  const handleEndMeetingClick = () => {
+    setEndMeetingDialogOpen(true);
+  };
+
+  const handleEndMeetingDialogClose = () => {
+    setEndMeetingDialogOpen(false);
+  };
+
+  const handleEndMeetingSuccess = () => {
+    setSuccessMessage('Meeting byl ukončen');
     refresh();
   };
 
@@ -97,6 +115,14 @@ function App() {
         onSuccess={handleReservationSuccess}
       />
 
+      {/* End Meeting Dialog */}
+      <EndMeetingDialog
+        open={endMeetingDialogOpen}
+        onClose={handleEndMeetingDialogClose}
+        currentEvent={data?.status.currentEvent || null}
+        onSuccess={handleEndMeetingSuccess}
+      />
+
       {/* Success Snackbar */}
       <Snackbar
         open={!!successMessage}
@@ -146,6 +172,23 @@ function App() {
       >
         {audioEnabled ? <VolumeUpIcon /> : <VolumeOffIcon />}
       </Fab>
+
+      {/* End meeting button - only visible when meeting is active */}
+      {isOccupied && (
+        <Fab
+          color="error"
+          onClick={handleEndMeetingClick}
+          sx={{
+            position: 'fixed',
+            bottom: 100,
+            right: 80,
+            zIndex: 1000,
+          }}
+          aria-label="Ukončit meeting"
+        >
+          <StopIcon />
+        </Fab>
+      )}
     </Box>
   );
 }

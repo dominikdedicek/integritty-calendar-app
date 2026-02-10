@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { parseISO, isBefore, isAfter, addMinutes, subMinutes } from 'date-fns';
-import { getTodayEvents, checkCollision, createReservation } from '../services/googleCalendar';
+import { getTodayEvents, checkCollision, createReservation, endMeetingEarly } from '../services/googleCalendar';
 import { config } from '../config';
 
 const router = Router();
@@ -115,6 +115,35 @@ router.post('/reserve', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Nepodařilo se vytvořit rezervaci',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// POST /api/events/:id/end - End a meeting early
+router.post('/:id/end', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        error: 'ID události je povinné',
+      });
+      return;
+    }
+
+    const event = await endMeetingEarly(id);
+
+    res.json({
+      success: true,
+      event,
+    });
+  } catch (error) {
+    console.error('Error ending meeting early:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Nepodařilo se ukončit meeting',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

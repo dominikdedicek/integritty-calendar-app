@@ -66,4 +66,20 @@ export async function createReservation(
   return handleResponse<ReserveResponse>(response);
 }
 
+export interface EndMeetingResponse {
+  success: boolean;
+  error?: string;
+}
+
+export async function endMeetingEarly(eventId: string): Promise<EndMeetingResponse> {
+  const response = await fetch(`${API_BASE}/${eventId}/end`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return handleResponse<EndMeetingResponse>(response);
+}
+
 export { ApiError };

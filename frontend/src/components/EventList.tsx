@@ -12,10 +12,12 @@ import {
   Event as EventIcon,
   Person as PersonIcon,
   AccessTime as TimeIcon,
+  FreeBreakfast as FreeIcon,
 } from '@mui/icons-material';
 import { CalendarEvent } from '../types';
 import { formatTimeRange, isEventCurrent, isEventPast } from '../utils/time';
 import { useClock } from '../hooks/useClock';
+import { differenceInMinutes } from 'date-fns';
 
 interface EventListProps {
   events: CalendarEvent[];
@@ -108,6 +110,41 @@ function EventListSkeleton() {
   );
 }
 
+function FreeTimeIndicator({ minutes }: { minutes: number }) {
+  const formatFreeTime = (mins: number): string => {
+    if (mins < 60) {
+      return `${mins} min`;
+    }
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    if (remainingMins === 0) {
+      return `${hours} hod`;
+    }
+    return `${hours} hod ${remainingMins} min`;
+  };
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 1,
+        py: 1,
+        my: 0.5,
+        borderRadius: 1,
+        backgroundColor: 'success.dark',
+        opacity: 0.8,
+      }}
+    >
+      <FreeIcon sx={{ fontSize: 18 }} />
+      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+        volno {formatFreeTime(minutes)}
+      </Typography>
+    </Box>
+  );
+}
+
 function EmptyState() {
   return (
     <Box
@@ -170,6 +207,39 @@ export function EventList({ events, loading }: EventListProps) {
     );
   }
 
+  // Calculate gaps between events
+  const renderEventsWithGaps = () => {
+    const elements: React.ReactNode[] = [];
+
+    activeEvents.forEach((event, index) => {
+      // Add event
+      elements.push(
+        <EventItem
+          key={event.id}
+          event={event}
+          isCurrent={isEventCurrent(event.start, event.end, now)}
+          isPast={false}
+        />
+      );
+
+      // Check if there's a gap to the next event
+      if (index < activeEvents.length - 1) {
+        const currentEventEnd = new Date(event.end);
+        const nextEventStart = new Date(activeEvents[index + 1].start);
+        const gapMinutes = differenceInMinutes(nextEventStart, currentEventEnd);
+
+        // Only show gap if it's at least 5 minutes
+        if (gapMinutes >= 5) {
+          elements.push(
+            <FreeTimeIndicator key={`gap-${event.id}`} minutes={gapMinutes} />
+          );
+        }
+      }
+    });
+
+    return elements;
+  };
+
   return (
     <Paper elevation={0} sx={{ p: 3, backgroundColor: 'background.paper' }}>
       <Typography variant="h3" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -177,14 +247,7 @@ export function EventList({ events, loading }: EventListProps) {
       </Typography>
       <Divider sx={{ mb: 2 }} />
       <List sx={{ p: 0 }}>
-        {activeEvents.map((event) => (
-          <EventItem
-            key={event.id}
-            event={event}
-            isCurrent={isEventCurrent(event.start, event.end, now)}
-            isPast={false}
-          />
-        ))}
+        {renderEventsWithGaps()}
       </List>
     </Paper>
   );

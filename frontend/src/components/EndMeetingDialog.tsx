@@ -10,10 +10,7 @@ import {
   CircularProgress,
   Box,
 } from '@mui/material';
-import {
-  Warning as WarningIcon,
-  CameraAlt as CameraIcon,
-} from '@mui/icons-material';
+import { Warning as WarningIcon } from '@mui/icons-material';
 import { CalendarEvent } from '../types';
 import { endMeetingEarly } from '../services/api';
 import { savePhoto } from '../services/photoStorage';
@@ -25,7 +22,7 @@ interface EndMeetingDialogProps {
   onSuccess: () => void;
 }
 
-type DialogStep = 'confirm' | 'camera' | 'processing';
+type DialogStep = 'confirm' | 'capturing' | 'preview' | 'processing';
 
 export function EndMeetingDialog({
   open,
@@ -34,10 +31,9 @@ export function EndMeetingDialog({
   onSuccess,
 }: EndMeetingDialogProps) {
   const [step, setStep] = useState<DialogStep>('confirm');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(3);
-  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -48,31 +44,6 @@ export function EndMeetingDialog({
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-    }
-  }, []);
-
-  // Start camera
-  const startCamera = useCallback(async () => {
-    try {
-      setCameraError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user', // Front camera
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-    } catch (err) {
-      console.error('Camera error:', err);
-      setCameraError('Nepodařilo se spustit kameru. Zkontrolujte oprávnění.');
     }
   }, []);
 
@@ -99,83 +70,87 @@ export function EndMeetingDialog({
     return canvas.toDataURL('image/jpeg', 0.8);
   }, []);
 
-  // Handle the full end meeting flow with photo
-  const handleEndMeetingWithPhoto = useCallback(async () => {
-    if (!currentEvent) return;
-
-    setLoading(true);
+  // Handle the confirmation - start capture process
+  const handleConfirm = useCallback(async () => {
+    setStep('capturing');
     setError(null);
 
     try {
-      // Take photo
-      const photoData = takePhoto();
+      // Start camera
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+        audio: false,
+      });
 
-      if (photoData) {
-        // Save photo locally
-        await savePhoto(currentEvent.id, currentEvent.title, photoData);
-        console.log('Photo saved for event:', currentEvent.title);
-      }
+      streamRef.current = stream;
 
-      // Stop camera
-      stopCamera();
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
 
-      // End the meeting
-      const result = await endMeetingEarly(currentEvent.id);
+        // Wait a moment for camera to stabilize
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-      if (result.success) {
-        onSuccess();
-        handleClose();
-      } else {
-        setError(result.error || 'Nepodařilo se ukončit meeting');
-        setStep('confirm');
+        // Flash effect
+        setShowFlash(true);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        // Take photo
+        const photoData = takePhoto();
+        setShowFlash(false);
+
+        if (photoData) {
+          setCapturedPhoto(photoData);
+          setStep('preview');
+
+          // Save photo
+          if (currentEvent) {
+            await savePhoto(currentEvent.id, currentEvent.title, photoData);
+            console.log('Photo saved for event:', currentEvent.title);
+          }
+
+          // Show preview for 1.5 seconds then proceed
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+
+          // Stop camera and proceed to end meeting
+          stopCamera();
+          setStep('processing');
+
+          // End the meeting
+          const result = await endMeetingEarly(currentEvent!.id);
+
+          if (result.success) {
+            onSuccess();
+            handleClose();
+          } else {
+            setError(result.error || 'Nepodařilo se ukončit meeting');
+            setStep('confirm');
+          }
+        } else {
+          throw new Error('Nepodařilo se pořídit fotku');
+        }
       }
     } catch (err) {
+      console.error('Capture error:', err);
+      stopCamera();
       setError(
-        err instanceof Error ? err.message : 'Nepodařilo se ukončit meeting'
+        err instanceof Error ? err.message : 'Nepodařilo se pořídit fotku'
       );
       setStep('confirm');
-    } finally {
-      setLoading(false);
     }
   }, [currentEvent, takePhoto, stopCamera, onSuccess]);
-
-  // Handle proceeding to camera step
-  const handleProceedToCamera = () => {
-    setStep('camera');
-    setCountdown(3);
-  };
-
-  // Start camera when entering camera step
-  useEffect(() => {
-    if (step === 'camera' && open) {
-      startCamera();
-    }
-  }, [step, open, startCamera]);
-
-  // Countdown and auto-capture
-  useEffect(() => {
-    if (step !== 'camera' || cameraError) return;
-
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown((c) => c - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-      // Countdown finished, take photo and end meeting
-      setStep('processing');
-      handleEndMeetingWithPhoto();
-    }
-  }, [step, countdown, cameraError, handleEndMeetingWithPhoto]);
 
   // Reset state when dialog closes
   const handleClose = useCallback(() => {
     stopCamera();
     setStep('confirm');
     setError(null);
-    setCameraError(null);
-    setLoading(false);
-    setCountdown(3);
+    setShowFlash(false);
+    setCapturedPhoto(null);
     onClose();
   }, [stopCamera, onClose]);
 
@@ -189,7 +164,7 @@ export function EndMeetingDialog({
   return (
     <Dialog
       open={open}
-      onClose={step === 'processing' ? undefined : handleClose}
+      onClose={step === 'confirm' ? handleClose : undefined}
       maxWidth="sm"
       fullWidth
       PaperProps={{
@@ -247,7 +222,8 @@ export function EndMeetingDialog({
               variant="body2"
               sx={{ textAlign: 'center', mt: 2, color: 'text.secondary' }}
             >
-              Pro potvrzení budete vyfoceni přední kamerou.
+              Tato akce změní čas konce meetingu v Google Kalendáři na aktuální
+              čas.
             </Typography>
           </DialogContent>
 
@@ -261,111 +237,99 @@ export function EndMeetingDialog({
               Zrušit
             </Button>
             <Button
-              onClick={handleProceedToCamera}
+              onClick={handleConfirm}
               variant="contained"
               color="error"
               size="large"
               fullWidth
-              startIcon={<CameraIcon />}
             >
-              Pokračovat
+              Ukončit meeting
             </Button>
           </DialogActions>
         </>
       )}
 
-      {/* Step 2: Camera */}
-      {step === 'camera' && (
+      {/* Step 2: Capturing (hidden camera + flash) */}
+      {step === 'capturing' && (
         <>
-          <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
-            <Typography variant="h2">Usměj se!</Typography>
-          </DialogTitle>
+          <DialogContent
+            sx={{
+              px: 4,
+              py: 6,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              position: 'relative',
+              minHeight: 300,
+            }}
+          >
+            {/* Hidden video element */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                position: 'absolute',
+                opacity: 0,
+                width: 1,
+                height: 1,
+              }}
+            />
 
-          <DialogContent sx={{ px: 4, pb: 2 }}>
-            {cameraError ? (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {cameraError}
-              </Alert>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    position: 'relative',
-                    width: '100%',
-                    aspectRatio: '4/3',
-                    backgroundColor: 'black',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      transform: 'scaleX(-1)', // Mirror for selfie
-                    }}
-                  />
-
-                  {/* Countdown overlay */}
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Typography
-                      variant="h1"
-                      sx={{
-                        fontSize: '8rem',
-                        fontWeight: 700,
-                        color: 'white',
-                        textShadow: '0 0 20px rgba(0,0,0,0.8)',
-                      }}
-                    >
-                      {countdown}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Typography
-                  variant="body1"
-                  sx={{ textAlign: 'center', mt: 2, fontWeight: 500 }}
-                >
-                  Fotka bude pořízena automaticky za {countdown}{' '}
-                  {countdown === 1 ? 'sekundu' : countdown < 5 ? 'sekundy' : 'sekund'}
-                </Typography>
-              </>
+            {/* Flash overlay */}
+            {showFlash && (
+              <Box
+                sx={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'white',
+                  zIndex: 9999,
+                }}
+              />
             )}
+
+            <CircularProgress size={48} sx={{ mb: 2 }} />
+            <Typography variant="body1">Moment...</Typography>
 
             {/* Hidden canvas for photo capture */}
             <canvas ref={canvasRef} style={{ display: 'none' }} />
           </DialogContent>
-
-          <DialogActions sx={{ px: 4, pb: 3 }}>
-            <Button
-              onClick={handleClose}
-              variant="outlined"
-              size="large"
-              fullWidth
-            >
-              Zrušit
-            </Button>
-          </DialogActions>
         </>
       )}
 
-      {/* Step 3: Processing */}
+      {/* Step 3: Preview captured photo */}
+      {step === 'preview' && capturedPhoto && (
+        <>
+          <DialogContent sx={{ px: 4, py: 3, textAlign: 'center' }}>
+            <Box
+              sx={{
+                width: '100%',
+                aspectRatio: '4/3',
+                borderRadius: 2,
+                overflow: 'hidden',
+                mb: 2,
+              }}
+            >
+              <img
+                src={capturedPhoto}
+                alt="Captured"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </Box>
+            <Typography variant="body1">Ukončuji meeting...</Typography>
+          </DialogContent>
+        </>
+      )}
+
+      {/* Step 4: Processing */}
       {step === 'processing' && (
         <>
           <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
@@ -375,7 +339,7 @@ export function EndMeetingDialog({
 
           <DialogContent sx={{ px: 4, pb: 4 }}>
             <Typography variant="body1" sx={{ textAlign: 'center' }}>
-              {loading ? 'Ukládám fotku a ukončuji meeting...' : 'Hotovo!'}
+              Ukončuji meeting...
             </Typography>
           </DialogContent>
         </>
